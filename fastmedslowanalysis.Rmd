@@ -1,0 +1,155 @@
+---
+title: "Understanding the PU% against different Velocity ranges for different players"
+author: "Ernesto Herrero"
+date: "11/25/2020"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+The first thing that we will do is find the mean and stabdard deviations of the PU% of each velocity range, then we will create a histogram to visualize the normality of the data
+
+```{r cars}
+# read in data
+data <- read.csv("fastmedslow.csv")
+
+#histogram 1
+histfast <- hist(data$fast[data$count > 15],
+     xlim = c(0.0, .3),
+     breaks = 300,
+     xlab = "Pull % ",
+     main = "Histogram of Pull% by hitters with more than 15 balls in-play against high velocity")
+
+# find mean and SD of fast velo pu% 
+MFast <- mean(replace(data$fast, data$count < 15, NA), na.rm = TRUE)
+SDfast <- sd(replace(data$fast, data$count < 15, NA), na.rm = TRUE)
+
+#histogram 2
+histmed <- hist(data$med[data$count > 15],
+     xlim = c(0.0, .65),
+     breaks = 300,
+     xlab = "Pull % ",
+     main = "Histogram of Pull% by hitters with more than 15 balls in-play against medium velocity")
+
+# find mean and SD of med velo pu% 
+MMed <- mean(replace(data$med, data$count < 15, NA), na.rm = TRUE)
+SDmed <- sd(replace(data$med, data$count < 15, NA), na.rm = TRUE)
+
+#histogram 3
+histslow <- hist(data$slow[data$count > 15],
+     xlim = c(0.0, .4),
+     breaks = 300,
+     xlab = "Pull % ",
+     main = "Histogram of Pull% by hitters with more than 15 balls in-play against slow velocity")
+
+# find mean and SD of slow velo pu% 
+MSlow <- mean(replace(data$slow, data$count < 15, NA), na.rm = TRUE)
+SDslow <- sd(replace(data$slow, data$count < 15, NA), na.rm = TRUE)
+
+
+```
+
+
+Here are the following Means and Standard Deviations
+```{r penguins.}
+#The Mean Pull % against High Velocity of players with more than 15 balls in play is
+MFast
+#With a Standard Deviation of 
+SDfast
+
+#The Mean Pull % against Medium Velocity of players with more than 15 balls in play is
+MMed
+#With a Standard Deviation of 
+SDmed
+
+#The Mean Pull % against Slow Velocity of players with more than 15 balls in play is
+MSlow
+#With a Standard Deviation of 
+SDslow
+```
+
+Here we will create 6 lists. Each list will have a specific category, referring to whether the player was one stanard deviation above/below 
+
+```{r penguin}
+
+## created 6 vectors all for one SD above or below the mean PU% for each velocity type
+higherPUfast <- c(1:1593)*0
+lowerPUfast <- c(1:1593)*0
+higherPUmed <- c(1:1593)*0
+lowerPUmed <- c(1:1593)*0
+higherPUslow <- c(1:1593)*0
+lowerPUslow <- c(1:1593)*0
+
+##inserted playerIDs in vectors where criteria of +-1 SD is surpassed AND more than 15 ABs
+
+for(i in 1:1593)
+{
+  if(data$count[i] > 15)
+  {
+    if(data$fast[i] > (MFast + SDfast))
+    {
+      higherPUfast[i] <- data$playerID[i]
+    }
+    else if(data$fast[i] < (MFast - SDfast))
+    {
+      lowerPUfast[i] <- data$player[i]
+    }
+    if(data$med[i] > (MMed + SDmed))
+    {
+      higherPUmed[i] <- data$playerID[i]
+    }
+    else if(data$med[i] < (MMed - SDmed))
+    {
+      lowerPUmed[i] <- data$playerID[i]
+    }
+    if(data$slow[i] > (MSlow + SDslow))
+    {
+      higherPUslow[i] <- data$playerID[i]
+    }
+    else if(data$slow[i] < (MSlow - SDslow))
+    {
+      lowerPUslow[i] <- data$playerID[i]
+    }
+  }
+}
+
+## Since I did not know how to just "push_back" elemennts into vectors, I had to remove the 0s in each one
+remove <- 0
+remove1 <- higherPUfast %in% remove
+remove2 <- lowerPUfast %in% remove
+remove3 <- higherPUmed %in% remove
+remove4 <- lowerPUmed %in% remove
+remove5 <- higherPUslow %in% remove
+remove6 <- lowerPUslow %in% remove
+
+higherPUfast <- higherPUfast[!remove1]
+lowerPUfast <- lowerPUfast[!remove2]
+higherPUmed <- higherPUmed[!remove3]
+lowerPUmed <- lowerPUmed[!remove4]
+higherPUslow <- higherPUslow[!remove5]
+lowerPUslow <- lowerPUslow[!remove6]
+
+## The final result consists of 6 vectors, each with the PlayerIDs of each player who met the criteria for the different PU%
+## For example, if higherPUfast has Francisco Lindor, that means that Lindor pulls the ball 1 standard deviation above average more than other players
+## if higherPUslow has Giancarlo Stanton, that means he pulls the ball at a higher rate than league average against slow velocity
+## if lowerPUslow has Jose Ramirez, then Ramirez pulls the ball at a much lower rate against slow velocity than other hitters
+
+```
+
+```{r penguin}
+write.csv(lowerPUfast, file = "Low Pull on High Velo.csv", row.names = FALSE)
+write.csv(higherPUfast, file = "High Pull on High Velo.csv", row.names = FALSE)
+write.csv(lowerPUmed, file = "Low Pull on Med Velo.csv", row.names = FALSE)
+write.csv(higherPUmed, file = "High Pull on Med Velo.csv", row.names = FALSE)
+write.csv(lowerPUslow, file = "Low Pull on Low Velo.csv", row.names = FALSE)
+write.csv(higherPUslow, file = "High Pull on Low Velo.csv", row.names = FALSE)
+```
+
