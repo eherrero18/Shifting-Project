@@ -1,0 +1,352 @@
+---
+title: "Shifting Software"
+author: "Ernesto Herrero"
+date: "2/11/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("C:/Users/e_man/Desktop/Baseball. It starts Now/Shifting Project/Shifting Project/Implementation")
+library("expss")
+rm(list=ls())
+```
+
+## Read In Files
+
+```{r read}
+
+pitchers <- read.csv("Pitchers.csv")
+IDs <- read.csv("PlayerIDs.csv")
+LBLP <- read.csv("LB-LP Zscore.csv")
+LBRP <- read.csv("LB-RP Zscore.csv")
+RBRP <- read.csv("RB-RP Zscore.csv")
+RBLP <- read.csv("RB-LP Zscore.csv")
+high_pull_high <- read.csv("High Pull on High Velo.csv")
+high_pull_low <- read.csv("High Pull on Low Velo.csv")
+high_pull_med <- read.csv("High Pull on Med Velo.csv")
+low_pull_high <- read.csv("Low Pull on High Velo.csv")
+low_pull_med <- read.csv("Low Pull on Med Velo.csv")
+low_pull_low <- read.csv("Low Pull on Low Velo.csv")
+speed <- read.csv("Home_to_first_Zscore.csv")
+pull_ment <- read.csv("Pull % Z-Scores.csv")
+wOBA_ment <- read.csv("wOBA Z-Scores.csv")
+pull <- read.csv("Pull %.csv")
+b_hand <- read.csv("Batter Handedness.csv")
+
+```
+
+``` {r func}
+# Acquire Players names
+batter = readline("Enter Batter (first and last): ")
+batterID <- vlookup( batter, IDs, result_column = 2, lookup_column = 1)
+
+# check for error
+
+while(is.na(batterID))
+{
+  print("Batter's name was entered incorrectly. Please try again.")
+  batter = readline("Enter Batter (first and last): ")
+  batterID <- vlookup( batter, IDs, result_column = 2, lookup_column = 1)
+}
+
+pitcher = readline("Enter Pitcher (first and last): ")
+pitcherID <- vlookup( pitcher, pitchers, result_column = 1, lookup_column = 2)
+
+#check for error
+while(is.na(pitcherID))
+{
+   print("Pitchers's name was entered incorrectly. Please try again.")
+   pitcher <- readline("Enter Pitcher (first and last): ")
+   pitcherID <- vlookup(pitcher, IDs, result_column = 2, lookup_column = 1)
+}
+
+#Acquire batter information
+# handedness
+batter_hand <- vlookup(batterID, b_hand, result_column = 3, lookup_column = 1)
+
+#Acquire Pitchers info
+pitcher_fb <- vlookup(pitcherID, pitchers, result_column = 4, lookup_column = 1)
+pitcher_hand <- vlookup( pitcherID, pitchers, result_column = 5, lookup_column = 1)
+
+high_velo = FALSE
+med_velo = FALSE
+low_velo = FALSE
+
+if(pitcher_fb >= 95.7)
+{
+  high_velo = TRUE
+}
+if(pitcher_fb < 95.7 && pitcher_fb > 90.7) 
+{
+  med_velo = TRUE
+}
+if(pitcher_fb <= 90.7)
+{
+  low_velo = TRUE
+}
+
+## Match UP handedness
+z_hand = 0
+if(is.na(batter_hand))
+{
+  print("Warning: Not enough Plate Appearances to utilize Handedness Factor")
+  z_hand_p = 0
+  z_hand = 0
+}else
+{
+  if(batter_hand == "S")
+  {
+    if(pitcher_hand == "L")
+    {
+      z_hand = vlookup(batterID, RBLP,6,1)
+       z_hand_p <- vlookup(batterID, RBLP, 5, 1)
+    }
+    else
+    {
+      z_hand = vlookup(batterID, LBRP,6,2)
+      z_hand_p <- vlookup(batterID, LBRP, 5, 2)
+    }
+  }
+  
+  if(batter_hand == "R")
+  {
+    if(pitcher_hand == "R")
+    {
+      z_hand = vlookup(batterID, RBRP,6,1)
+      z_hand_p <- vlookup(batterID, RBRP, 5, 1)
+    }
+    if(pitcher_hand == "L")
+    {
+      z_hand = vlookup(batterID, RBLP,6,1)
+      z_hand_p <- vlookup(batterID, RBLP, 5, 1)
+    }
+  }
+  
+  if(batter_hand == "L")
+  {
+    if(pitcher_hand == "R")
+    {
+      z_hand = vlookup(batterID, LBRP,6,2)
+      z_hand_p <- vlookup(batterID, LBRP, 5, 2)
+    }
+    else if(pitcher_hand == "L")
+    {
+      z_hand = vlookup(batterID, LBLP,6,2)
+      z_hand_p <- vlookup(batterID, LBLP, 5, 2)
+    }
+  }
+  if(is.na(z_hand))
+  {
+  print("Warning: Not enough Plate Appearances to utilize Handedness Factor")
+  z_hand = 0
+  z_hand_p = 0
+  }
+}
+
+
+z_pull_ment = 0
+z_woba_ment = 0
+
+z_pull_ment = -1*vlookup(batterID, pull_ment,8,1)
+z_pull_ment_p = vlookup(batterID, pull_ment, 6,1)
+z_woba_ment = vlookup(batterID, wOBA_ment, 8, 1)
+
+
+if(is.na(z_pull_ment))
+{
+  print("Warning: Not enough Plate Appearances to utilize Pull Mentality Factor")
+  z_pull_ment = 0
+  z_pull_ment_p = 0
+}
+if(is.na(z_woba_ment))
+{
+   print("Warning: Not enough Plate Appearances to utilize wOBA Mentality Factor")
+   z_woba_ment = 0
+}
+
+if(low_velo)
+{
+  posi_boost <- batterID%in%high_pull_low$x
+  nega_boost <- batterID%in%low_pull_low$x
+}
+if(med_velo)
+{
+  posi_boost <- batterID%in%high_pull_med$x
+  nega_boost <- batterID%in%low_pull_med$x
+}
+if(high_velo)
+{
+  posi_boost <- batterID%in%high_pull_high$x
+  nega_boost <- batterID%in%low_pull_high$x
+}
+
+if(z_pull_ment <= 0)
+{
+  shift_index <- z_hand + (z_pull_ment/4) + z_woba_ment 
+}else
+{
+  shift_index <- z_hand + z_pull_ment + z_woba_ment
+}
+
+if(posi_boost)
+{
+  shift_index <- shift_index + 1
+}
+
+if(nega_boost)
+{
+  shift_index <- shift_index - 1
+}
+
+if( posi_boost == FALSE && nega_boost == FALSE)
+{
+  print("Warning: Player not highly affected by fastball velocity")
+}
+
+pull_p <- 0
+pull_p <- vlookup(batterID, pull,4, 1)
+pull_p_low <- FALSE
+pull_p_high <- FALSE
+pull_p_avg <- FALSE
+
+if(is.na(pull_p))
+{
+  pull_p = 0
+}
+
+if(pull_p < 35.0)
+{
+  pull_p_low <- TRUE
+  
+}else if(pull_p > 43.0)
+{
+  pull_p_high <- TRUE
+  
+}else if(pull_p >= 35.0 && pull_p <= 43.0)
+{
+  pull_p_avg <- TRUE
+}
+  
+
+
+
+if(shift_index < 0 && !pull_p_high)
+{
+  cat("For this matchup:", batter ) 
+  
+  cat(" vs", pitcher) 
+   
+  cat(", It is recommended to play standard defense (No Shift). ")
+}else if(shift_index < 0 && pull_p_high)
+{
+  if(z_woba_ment < -0.2279)
+  {
+    cat("For this matchup:", batter ) 
+  
+    cat(" vs", pitcher) 
+   
+    cat(", It is recommended to play standard defense (No Shift). ")
+    
+  }else if(z_pull_ment < 0 && z_pull_ment_p < .36)
+  {
+    cat("For this matchup:", batter ) 
+  
+    cat(" vs", pitcher) 
+   
+    cat(", It is recommended to play standard defense (No Shift). ")
+    
+  }else if(z_hand_p < 36.5)
+  {
+    cat("For this matchup:", batter ) 
+  
+    cat(" vs", pitcher) 
+   
+    cat(", It is recommended to play standard defense (No Shift). ")
+    
+  }else 
+  {
+    cat("For this matchup:", batter ) 
+  
+    cat(" vs", pitcher) 
+   
+    cat(", It is recommended to play slight shifted defense. ")
+  }
+}else if(shift_index > 0)
+{
+  if(shift_index > 2.0)
+  {
+    cat("For this matchup:", batter ) 
+  
+    cat(" vs", pitcher) 
+   
+    cat(", It is recommended to play aggressively shifted defense. ")
+  }else
+  {
+    if(z_woba_ment > 1.0)
+    {
+      cat("For this matchup:", batter ) 
+  
+      cat(" vs", pitcher) 
+   
+      cat(", It is recommended to play aggressively shifted defense. ")
+    }else if((z_pull_ment > 1.8) || (z_pull_ment_p >= .395))
+    {
+  
+      cat("For this matchup:", batter ) 
+  
+      cat(" vs", pitcher) 
+   
+      cat(", It is recommended to play aggressively shifted defense. ")
+    }else if(z_hand_p > 39.5) # SUBJECT TO CHANGE
+    {
+      cat("For this matchup:", batter ) 
+  
+      cat(" vs", pitcher) 
+   
+      cat(", It is recommended to play aggressively shifted defense. ")
+    }
+    else 
+    {
+      cat("For this matchup:", batter ) 
+  
+      cat(" vs", pitcher) 
+   
+      cat(", It is recommended to play slight shifted defense. ")
+    }
+  }
+}else if(shift_index == 0)
+{
+  if(pull_p >=  46.0)
+  {
+      cat("For this matchup:", batter ) 
+  
+      cat(" vs", pitcher) 
+   
+      cat(", It is recommended to play aggressively shifted defense. ")
+  }
+  else if(pull_p < 46 && pull_p > 38.0) 
+    {cat("For this matchup:", batter ) 
+  
+      cat(" vs", pitcher) 
+   
+      cat(", It is recommended to play slight shifted defense. ")
+  }
+  else if(pull_p < 38.0 && pull_p > 0)
+  {
+    cat("For this matchup:", batter ) 
+  
+    cat(" vs", pitcher) 
+   
+    cat(", It is recommended to play standard defense (No Shift). ")
+  }
+  else
+  {
+      print("Batter does not have enough major league experince to correctly determine how to shift him.
+            Please utilize minor league Pull % numbers to determine appropiate defensive positioning.")
+  }
+}
+
+```   
